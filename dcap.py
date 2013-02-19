@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from urlparse import urlparse
-from socket import htonl, ntohl
 import socket
 import cStringIO
 import struct
@@ -91,9 +90,9 @@ class Dcap:
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.connect((host+'.desy.de', port))
 
-		packer = struct.Struct('II')
+		packer = struct.Struct('>II')
 
-		s.send(packer.pack( htonl(session), htonl(len(chalange)) ))
+		s.send(packer.pack(session, len(chalange)))
 		s.send(chalange)
 		return s
 		
@@ -110,21 +109,21 @@ class DcapStream:
 		self.dcap = dcap
 
 	def _get_ack(self):
-		unpacker = struct.Struct('I')
+		unpacker = struct.Struct('>I')
 		msg = self.socket.recv(unpacker.size)
-		size = ntohl(unpacker.unpack(msg)[0])
+		size = unpacker.unpack(msg)[0]
 		msg = self.socket.recv(size)
 		# do something here
 
 	def _get_data(self):
-		unpacker = struct.Struct('II')		
+		unpacker = struct.Struct('>II')
 		msg = self.socket.recv(unpacker.size)
 
-		data_unpacker = struct.Struct('I')
+		data_unpacker = struct.Struct('>I')
 		data = ''
 		while True:
 			data_header = self.socket.recv(data_unpacker.size)
-			count = ntohl(data_unpacker.unpack(data_header)[0])
+			count = data_unpacker.unpack(data_header)[0]
 
 			if count == END_OF_DATA:
 				break
@@ -132,16 +131,16 @@ class DcapStream:
 		return data
 
 	def read(self, count):
-		packer = struct.Struct('IIq')
-		msg = packer.pack( htonl(12), htonl(DCAP_READ), htonl(count))
+		packer = struct.Struct('>IIq')
+		msg = packer.pack( 12, DCAP_READ, count)
 		self.socket.sendall(msg)
 		self._get_ack()
 		return self._get_data()
 
 	def close(self):
-		packer = struct.Struct('II')
+		packer = struct.Struct('>II')
 
-		msg = packer.pack( htonl(4), htonl(DCAP_CLOSE))
+		msg = packer.pack(4, DCAP_CLOSE)
 		self.socket.sendall(msg)
 		self._get_ack()
 		reply = self.dcap._rcv_control_msg()
@@ -150,13 +149,13 @@ class DcapStream:
 	def send_file(self, src):
 
 		statinfo = os.stat(src)
-		packer = struct.Struct('II')
-		msg = packer.pack( htonl(4), htonl(DCAP_WRITE))
+		packer = struct.Struct('>II')
+		msg = packer.pack(4, DCAP_WRITE)
 		self.socket.sendall(msg)
 		self._get_ack()
 
-		data_packer = struct.Struct('III')
-		data_header = data_packer.pack(htonl(4), htonl(DATA), htonl(statinfo.st_size))
+		data_packer = struct.Struct('>III')
+		data_header = data_packer.pack(4, DATA, statinfo.st_size)
 		self.socket.sendall(data_header)
 
 		with open(src,'r') as f:
@@ -166,23 +165,23 @@ class DcapStream:
 					break
 				self.socket.sendall(data)
 
-		data_packer = struct.Struct('I')
-		data_header = data_packer.pack(htonl(END_OF_DATA))
+		data_packer = struct.Struct('>I')
+		data_header = data_packer.pack(END_OF_DATA)
 		self.socket.sendall(data_header)
 		self._get_ack()
 
 	def write(self, buf):
-		packer = struct.Struct('II')
-		msg = packer.pack( htonl(4), htonl(DCAP_WRITE))
+		packer = struct.Struct('>II')
+		msg = packer.pack(4, DCAP_WRITE)
 		self.socket.sendall(msg)
 		self._get_ack()
 
-		data_packer = struct.Struct('III')
-		data_header = data_packer.pack(htonl(4), htonl(DATA), htonl(len(buf)))
+		data_packer = struct.Struct('>III')
+		data_header = data_packer.pack(4, DATA, len(buf))
 		self.socket.sendall(data_header)
 		self.socket.sendall(buf)
-		data_packer = struct.Struct('I')
-		data_header = data_packer.pack(htonl(END_OF_DATA))
+		data_packer = struct.Struct('>I')
+		data_header = data_packer.pack(END_OF_DATA)
 		self.socket.sendall(data_header)
 		self._get_ack()
 
