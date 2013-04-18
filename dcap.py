@@ -88,7 +88,7 @@ class Dcap:
 
 	def _init_data_connection(self, session, host, port, chalange):
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		s.connect((host+'.desy.de', port))
+		s.connect((host, port))
 
 		packer = struct.Struct('>II')
 
