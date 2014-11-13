@@ -2,10 +2,9 @@
 
 from urlparse import urlparse
 import socket
-import cStringIO
 import struct
-import time
-import os 
+import os
+import sys
 
 VER_MAJ = 0
 VER_MIN = 0
@@ -27,10 +26,11 @@ def _merge_string(b):
 class Dcap:
 	"""dCache Client Access Protocol DCAP"""
 
-	def __init__(self, url, root='/'):
+	def __init__(self, url):
 		u = urlparse(url)
 		self.host = u.hostname
 		self.port = u.port
+		self.root =u.path
 		self.seq = 0
 		self._connect()
 		self._send_hello()
@@ -71,12 +71,12 @@ class Dcap:
 
 	def open_file(self, path, mode='r'):
 		session = self.seq
-		open_opemmand = "%d 0 client open dcap://%s:%d/%s %s localhost 1111 -passive" % \
-			(self.seq, self.host, self.port, path, mode )
+		open_opemmand = "%d 0 client open dcap://%s:%d/%s/%s %s localhost 1111 -passive" % \
+			(self.seq, self.host, self.port, self.root, path, mode )
 		self._send_control_msg(open_opemmand)
 		reply = self._rcv_control_msg()
 		host, port, chalange = self.parse_reply(reply)
-		
+
 		data_socket = self._init_data_connection(session, host, port, chalange)
 		return DcapStream(data_socket, self)
 
@@ -95,10 +95,10 @@ class Dcap:
 		s.send(packer.pack(session, len(chalange)))
 		s.send(chalange)
 		return s
-		
+
 	def rename(self, src, dest):
-		rename_cmd = "%d 0 client rename dcap://%s:%d/%s %s" % \
-			(self.seq, self.host, self.port, src, dest )
+		rename_cmd = "%d 0 client rename dcap://%s:%d/%s/%s %s" % \
+			(self.seq, self.host, self.port, self.root, src, dest )
 		self._send_control_msg(rename_cmd)
 		reply = self._rcv_control_msg()
 
@@ -186,11 +186,20 @@ class DcapStream:
 		self._get_ack()
 
 if __name__ == "__main__":
-	dcap = Dcap("dcap://dcache-lab000.desy.de:22125")
 
-	f = dcap.open_file('/exports/data/file114', 'w')
+	if len(sys.argv) < 4:
+		print("Usage: dcap <door> <src> <dest>")
+		sys.exit(1)
 
-	f.send_file('/etc/profile')
+	door = sys.argv[1]
+	src = sys.argv[2]
+	dest = sys.argv[3]
+
+	dcap = Dcap(door)
+
+	f = dcap.open_file(dest, 'w')
+
+	f.send_file(src)
 	f.close()
 
 	dcap._send_bye()
