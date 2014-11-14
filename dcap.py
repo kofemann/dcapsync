@@ -102,6 +102,15 @@ class Dcap:
 		self._send_control_msg(rename_cmd)
 		reply = self._rcv_control_msg()
 
+def readFully(s, count):
+	n = count
+	data = ''
+	while n > 0:
+		d = s.recv(n)
+		n = n - len(d)
+		data = data + d 
+	return data
+
 class DcapStream:
 
 	def __init__(self, sock, dcap):
@@ -128,7 +137,7 @@ class DcapStream:
 			if count == END_OF_DATA:
 				self._get_ack()
 				break
-			data = data + (self.socket.recv(count))
+			data = data + readFully(self.socket, count)
 		return data
 
 	def read(self, count):
