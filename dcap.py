@@ -126,6 +126,7 @@ class DcapStream:
 			count = data_unpacker.unpack(data_header)[0]
 
 			if count == END_OF_DATA:
+				self._get_ack()
 				break
 			data = data + (self.socket.recv(count))
 		return data
@@ -160,7 +161,7 @@ class DcapStream:
 
 		with open(src,'r') as f:
 			while True:
-				data = f.read(256*1024)
+				data = f.read(256 * 1024)
 				if len(data) == 0:
 					break
 				self.socket.sendall(data)
@@ -169,6 +170,15 @@ class DcapStream:
 		data_header = data_packer.pack(END_OF_DATA)
 		self.socket.sendall(data_header)
 		self._get_ack()
+
+	def recv_file(self, dst):
+
+		with open(dst,'w') as f:
+			while True:
+				data = self.read(1024 * 1024)
+				if len(data) == 0:
+					break
+				f.write(data)
 
 	def write(self, buf):
 		packer = struct.Struct('>II')
@@ -185,23 +195,36 @@ class DcapStream:
 		self.socket.sendall(data_header)
 		self._get_ack()
 
+def usage_and_exit():
+	print("Usage: dcap <PUT|GET> <door> <local file> <remote file>")
+	sys.exit(1)
+
+
 if __name__ == "__main__":
 
-	if len(sys.argv) < 4:
-		print("Usage: dcap <door> <src> <dest>")
-		sys.exit(1)
+	if len(sys.argv) < 5:
+		usage_and_exit()
 
-	door = sys.argv[1]
-	src = sys.argv[2]
-	dest = sys.argv[3]
+	op = sys.argv[1]
+	door = sys.argv[2]
+	local = sys.argv[3]
+	remote = sys.argv[4]
 
-	dcap = Dcap(door)
+	if op == "PUT" :
+		dcap = Dcap(door)
+		f = dcap.open_file(remote, 'w')
+		f.send_file(local)
+		f.close()
+		dcap._send_bye()
+		dcap._close()
+	elif op == "GET":
+		dcap = Dcap(door)
+		f = dcap.open_file(remote, 'r')
+		f.recv_file(local)
+		f.close()
+		dcap._send_bye()
+		dcap._close()
+	else:
+		usage_and_exit()
 
-	f = dcap.open_file(dest, 'w')
-
-	f.send_file(src)
-	f.close()
-
-	dcap._send_bye()
-	dcap._close()
 
