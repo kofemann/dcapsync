@@ -117,7 +117,7 @@ def readFully(s, count):
 	while n > 0:
 		d = s.recv(n)
 		n = n - len(d)
-		data = data + d 
+		data = data + d
 	print data
 	return data
 
@@ -228,19 +228,19 @@ class DcapStream:
 		self.socket.sendall(data_header)
 		self._get_ack()
 
-        def readv(self, iovecs):
-                n = 8+len(iovecs)*12
-                packer = struct.Struct('>III')
-                msg = packer.pack(n, DCAP_READV, len(iovecs))
-                self.socket.sendall(msg)
+	def readv(self, iovecs):
+		n = 8+len(iovecs)*12
+		packer = struct.Struct('>III')
+		msg = packer.pack(n, DCAP_READV, len(iovecs))
+		self.socket.sendall(msg)
 
 		totalToRead = 0
-                data_packer = struct.Struct('>QI')
-                for o, l in iovecs:
+		data_packer = struct.Struct('>QI')
+		for o, l in iovecs:
 			totalToRead = totalToRead + l
-                        chunk = data_packer.pack(o, l)
-                        self.socket.sendall(chunk)
-                self._get_ack()
+			chunk = data_packer.pack(o, l)
+			self.socket.sendall(chunk)
+			self._get_ack()
 
 		data = ''
 		data_unpacker = struct.Struct('>I')
