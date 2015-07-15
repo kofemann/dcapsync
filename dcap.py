@@ -103,6 +103,10 @@ class Dcap:
 		self._send_control_msg(rename_cmd)
 		reply = self._rcv_control_msg()
 
+	def close(self):
+		self._send_bye()
+		self._close()
+
 def readFully(s, count):
 	n = count
 	data = ''
@@ -251,15 +255,13 @@ if __name__ == "__main__":
 		f = dcap.open_file(remote, 'w')
 		f.send_file(local)
 		f.close()
-		dcap._send_bye()
-		dcap._close()
+		dcap.close()
 	elif op == "GET":
 		dcap = Dcap(door)
 		f = dcap.open_file(remote, 'r')
 		f.recv_file(local)
 		f.close()
-		dcap._send_bye()
-		dcap._close()
+		dcap.close()
 	else:
 		usage_and_exit()
 
