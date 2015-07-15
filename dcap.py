@@ -14,9 +14,13 @@ VER_MIN = 0
 END_OF_DATA =  0xffffffff
 DCAP_WRITE = 1
 DCAP_READ = 2
+DCAP_SEEK = 3
 DCAP_CLOSE = 4
 DCAP_READV = 13;
 DATA = 8
+DCAP_SEEK_SET = 0
+DCAP_SEEK_CUR = 1
+DCAP_SEEK_END = 2
 
 def _merge_string(b):
 	r = ''
@@ -128,7 +132,7 @@ class DcapStream:
 		msg = self.socket.recv(unpacker.size)
 		size = unpacker.unpack(msg)[0]
 		msg = self.socket.recv(size)
-		# do something here
+		return msg
 
 	def _get_data(self):
 		unpacker = struct.Struct('>II')
@@ -152,6 +156,20 @@ class DcapStream:
 		self.socket.sendall(msg)
 		self._get_ack()
 		return self._get_data()
+
+	def seek(self, offset,  from_what ):
+		packer = struct.Struct('>IIqI')
+		msg = packer.pack( 16, DCAP_SEEK, offset,  from_what );
+		self.socket.sendall(msg)
+		cb = self._get_ack()
+		unpacker = struct.Struct('>IIIq')
+		return unpacker.unpack(cb)[3]
+
+	def tell(self):
+		return self.seek(0, DCAP_SEEK_CUR)
+
+	def flush(self):
+		pass
 
 	def close(self):
 		packer = struct.Struct('>II')
