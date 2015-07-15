@@ -15,6 +15,7 @@ END_OF_DATA =  0xffffffff
 DCAP_WRITE = 1
 DCAP_READ = 2
 DCAP_CLOSE = 4
+DCAP_READV = 13;
 DATA = 8
 
 def _merge_string(b):
@@ -71,8 +72,8 @@ class Dcap:
 
 	def open_file(self, path, mode='r'):
 		session = self.seq
-		open_opemmand = "%d 0 client open dcap://%s:%d/%s/%s %s localhost 1111 -passive" % \
-			(self.seq, self.host, self.port, self.root, path, mode )
+		open_opemmand = "%d 0 client open dcap://%s:%d/%s/%s %s localhost 1111 -passive -uid=%d -gid=%d" % \
+			(self.seq, self.host, self.port, self.root, path, mode, os.getuid(), os.getgid())
 		self._send_control_msg(open_opemmand)
 		reply = self._rcv_control_msg()
 		host, port, chalange = self.parse_reply(reply)
@@ -109,6 +110,7 @@ def readFully(s, count):
 		d = s.recv(n)
 		n = n - len(d)
 		data = data + d 
+	print data
 	return data
 
 class DcapStream:
@@ -203,6 +205,31 @@ class DcapStream:
 		data_header = data_packer.pack(END_OF_DATA)
 		self.socket.sendall(data_header)
 		self._get_ack()
+
+        def readv(self, iovecs):
+                n = 8+len(iovecs)*12
+                packer = struct.Struct('>III')
+                msg = packer.pack(n, DCAP_READV, len(iovecs))
+                self.socket.sendall(msg)
+
+		totalToRead = 0
+                data_packer = struct.Struct('>QI')
+                for o, l in iovecs:
+			totalToRead = totalToRead + l
+                        chunk = data_packer.pack(o, l)
+                        self.socket.sendall(chunk)
+                self._get_ack()
+
+		data = ''
+		data_unpacker = struct.Struct('>I')
+		while totalToRead > 0:
+			data_header = self.socket.recv(data_unpacker.size)
+			count = data_unpacker.unpack(data_header)[0]
+			print "reading %d bytes" % count
+			data = data + readFully(self.socket, count)
+			totalToRead = totalToRead - count
+		self._get_ack()
+		return data
 
 def usage_and_exit():
 	print("Usage: dcap <PUT|GET> <door> <local file> <remote file>")
