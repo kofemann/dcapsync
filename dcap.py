@@ -171,6 +171,12 @@ class DcapStream:
 	def flush(self):
 		pass
 
+	def parse_reply(self, reply):
+		s = reply.split()
+		if s[3] == 'failed':
+			raise RuntimeError("failed to close file: " + _merge_string(s[4:]))
+
+
 	def close(self):
 		packer = struct.Struct('>II')
 
@@ -179,6 +185,7 @@ class DcapStream:
 		self._get_ack()
 		reply = self.dcap._rcv_control_msg()
 		self.socket.close()
+		self.parse_reply(reply)
 
 	def send_file(self, src):
 
