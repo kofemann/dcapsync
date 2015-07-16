@@ -40,6 +40,12 @@ class Dcap:
 		self._connect()
 		self._send_hello()
 
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.close()
+
 	def _connect(self):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.socket.connect((self.host, self.port))
@@ -124,8 +130,14 @@ def readFully(s, count):
 class DcapStream:
 
 	def __init__(self, sock, dcap):
-		self.socket = sock;
+		self.socket = sock
 		self.dcap = dcap
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.close()
 
 	def _get_ack(self):
 		unpacker = struct.Struct('>I')
@@ -276,17 +288,14 @@ if __name__ == "__main__":
 	remote = sys.argv[4]
 
 	if op == "PUT" :
-		dcap = Dcap(door)
-		f = dcap.open_file(remote, 'w')
-		f.send_file(local)
-		f.close()
-		dcap.close()
+		with Dcap(door) as dcap:
+			with dcap.open_file(remote, 'w') as f:
+				f.send_file(local)
+
 	elif op == "GET":
-		dcap = Dcap(door)
-		f = dcap.open_file(remote, 'r')
-		f.recv_file(local)
-		f.close()
-		dcap.close()
+		with Dcap(door) as dcap:
+			with dcap.open_file(remote, 'r') as f:
+				f.recv_file(local)
 	else:
 		usage_and_exit()
 
