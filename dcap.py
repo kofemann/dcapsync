@@ -80,15 +80,15 @@ class Dcap:
 			(self.seq, self.host, self.port, self.root, path, mode, os.getuid(), os.getgid())
 		self._send_control_msg(open_opemmand)
 		reply = self._rcv_control_msg()
-		host, port, chalange = self.parse_reply(reply)
+		host, port, chalange = self.parse_reply(reply, path)
 
 		data_socket = self._init_data_connection(session, host, port, chalange)
 		return DcapStream(data_socket, self)
 
-	def parse_reply(self, reply):
+	def parse_reply(self, reply, path):
 		s = reply.split()
 		if s[3] == 'failed':
-			raise RuntimeError("failed to open file: " + _merge_string(s[5:]))
+			raise RuntimeError("failed to open file " + path + ": " + _merge_string(s[5:]))
 		return s[4], int(s[5]), s[6]
 
 	def _init_data_connection(self, session, host, port, chalange):
