@@ -124,7 +124,6 @@ def readFully(s, count):
 		d = s.recv(n)
 		n = n - len(d)
 		data = data + d
-	print data
 	return data
 
 class DcapStream:
@@ -259,14 +258,13 @@ class DcapStream:
 			totalToRead = totalToRead + l
 			chunk = data_packer.pack(o, l)
 			self.socket.sendall(chunk)
-			self._get_ack()
+		self._get_ack()
 
 		data = ''
 		data_unpacker = struct.Struct('>I')
 		while totalToRead > 0:
 			data_header = self.socket.recv(data_unpacker.size)
 			count = data_unpacker.unpack(data_header)[0]
-			print "reading %d bytes" % count
 			data = data + readFully(self.socket, count)
 			totalToRead = totalToRead - count
 		self._get_ack()
